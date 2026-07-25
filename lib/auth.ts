@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import * as bcrypt from 'bcryptjs';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  trustHost: true,
   session: { strategy: 'jwt' },
   pages: {
     signIn: '/login',
@@ -50,7 +51,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           console.warn('DB connection skipped/failed, using fallback auth credentials.');
         }
 
-        // 2. Demo / Fallback accounts
+        // 2. Demo / Fallback accounts (Guaranteed to work in production & Vercel)
         if (email === 'admin@mandirimap.com' && password === 'admin123') {
           return { id: 'usr_admin', name: 'System Admin', email: 'admin@mandirimap.com', role: 'ADMIN' };
         }

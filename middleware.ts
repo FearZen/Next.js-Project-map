@@ -6,6 +6,7 @@ export async function middleware(req: NextRequest) {
   const token = await getToken({
     req,
     secret: process.env.AUTH_SECRET || 'merchant-acquisition-map-secret-key-2026',
+    secureCookie: process.env.NODE_ENV === 'production',
   });
 
   const { pathname } = req.nextUrl;
