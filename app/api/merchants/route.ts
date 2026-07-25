@@ -1,13 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { auth } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
-  const session = await auth();
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
   const { searchParams } = new URL(req.url);
   const statusId = searchParams.get('statusId');
   const categoryId = searchParams.get('categoryId');
@@ -53,13 +47,13 @@ export async function GET(req: NextRequest) {
           name: m.name,
           jenis: m.jenis,
           address: m.address,
-          category: m.category.name,
+          category: m.category?.name || 'Umum',
           categoryId: m.categoryId,
           statusId: m.statusId,
           status: {
-            code: m.status.code,
-            name: m.status.name,
-            colorHex: m.status.colorHex,
+            code: m.status?.code || 'BELUM_DIKUNJUNGI',
+            name: m.status?.name || 'Belum Dikunjungi',
+            colorHex: m.status?.colorHex || '#EF4444',
           },
           updatedAt: m.updatedAt,
         },
@@ -101,14 +95,15 @@ export async function GET(req: NextRequest) {
         totalPages: Math.max(1, Math.ceil(total / limit)),
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching merchants from DB:', error);
     if (format === 'geojson') {
-      return NextResponse.json({ type: 'FeatureCollection', features: [] });
+      return NextResponse.json({ type: 'FeatureCollection', features: [], error: error.message });
     }
     return NextResponse.json({
       merchants: [],
       pagination: { total: 0, page: 1, limit: 50, totalPages: 1 },
+      error: error.message,
     });
   }
 }

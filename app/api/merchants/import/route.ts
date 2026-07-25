@@ -19,6 +19,27 @@ const importPayloadSchema = z.object({
   ),
 });
 
+// Helper to auto-seed master statuses if DB in Supabase is empty
+async function ensureMasterStatusesExist() {
+  const count = await prisma.merchantStatus.count();
+  if (count === 0) {
+    const statusesData = [
+      { code: 'BELUM_DIKUNJUNGI', name: 'Belum Dikunjungi', colorHex: '#EF4444', sortOrder: 1 },
+      { code: 'SURVEY', name: 'Survey', colorHex: '#F59E0B', sortOrder: 2 },
+      { code: 'NEGOSIASI', name: 'Negosiasi', colorHex: '#3B82F6', sortOrder: 3 },
+      { code: 'AKUISISI', name: 'Akuisisi', colorHex: '#10B981', sortOrder: 4 },
+      { code: 'DITOLAK', name: 'Ditolak', colorHex: '#6B7280', sortOrder: 5 },
+    ];
+    for (const st of statusesData) {
+      await prisma.merchantStatus.upsert({
+        where: { code: st.code },
+        update: {},
+        create: st,
+      });
+    }
+  }
+}
+
 export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user) {
@@ -32,6 +53,9 @@ export async function POST(req: NextRequest) {
     if (!parsed.data || parsed.data.length === 0) {
       return NextResponse.json({ error: 'Tidak ada data valid untuk diimpor' }, { status: 400 });
     }
+
+    // 0. Auto-ensure Master Statuses exist in Supabase DB
+    await ensureMasterStatusesExist();
 
     // 1. Fetch valid user ID in DB for FK constraints
     let dbUser = await prisma.user.findFirst({
@@ -56,7 +80,7 @@ export async function POST(req: NextRequest) {
     const statusId = defaultStatus?.id;
     if (!statusId) {
       return NextResponse.json(
-        { error: 'Master status belum di-seed di database. Jalankan `npx prisma db seed`.' },
+        { error: 'Gagal menemukan Master Status di database.' },
         { status: 500 }
       );
     }
@@ -77,17 +101,21 @@ export async function POST(req: NextRequest) {
     // 4. Create ImportLog record if valid user exists
     let importLogId: string | undefined;
     if (userId) {
-      const importLog = await prisma.importLog.create({
-        data: {
-          userId,
-          fileName: parsed.fileName,
-          totalRows: parsed.data.length,
-          successCount: 0,
-          failedCount: 0,
-          status: 'PROCESSING',
-        },
-      });
-      importLogId = importLog.id;
+      try {
+        const importLog = await prisma.importLog.create({
+          data: {
+            userId,
+            fileName: parsed.fileName,
+            totalRows: parsed.data.length,
+            successCount: 0,
+            failedCount: 0,
+            status: 'PROCESSING',
+          },
+        });
+        importLogId = importLog.id;
+      } catch (e) {
+        console.warn('ImportLog creation skipped:', e);
+      }
     }
 
     // 5. Build existing merchant cache for duplicate check
@@ -130,7 +158,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 6. Bulk Insert using createMany (Fast, atomic, serverless-safe)
+    // 6. Bulk Insert using createMany
     let successCount = 0;
 
     if (toCreate.length > 0) {
@@ -143,14 +171,18 @@ export async function POST(req: NextRequest) {
 
     // Update Import Log status if created
     if (importLogId) {
-      await prisma.importLog.update({
-        where: { id: importLogId },
-        data: {
-          successCount,
-          failedCount: 0,
-          status: 'SUCCESS',
-        },
-      });
+      try {
+        await prisma.importLog.update({
+          where: { id: importLogId },
+          data: {
+            successCount,
+            failedCount: 0,
+            status: 'SUCCESS',
+          },
+        });
+      } catch (e) {
+        console.warn('ImportLog update skipped:', e);
+      }
     }
 
     return NextResponse.json({
