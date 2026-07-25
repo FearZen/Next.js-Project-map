@@ -1,0 +1,126 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique // MARKETING, TEAM_LEADER, KEPALA_CABANG, ADMIN
+  description String?
+  users       User[]
+
+  @@map("roles")
+}
+
+model User {
+  id           String         @id @default(cuid())
+  name         String
+  email        String         @unique
+  passwordHash String
+  isActive     Boolean        @default(true)
+  roleId       String
+  role         Role           @relation(fields: [roleId], references: [id])
+  visitLogs    VisitHistory[]
+  notes        Note[]
+  importLogs   ImportLog[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@map("users")
+}
+
+model MerchantCategory {
+  id          String     @id @default(cuid())
+  name        String     @unique // e.g. "Cafe & Restoran", "Warung"
+  description String?
+  merchants   Merchant[]
+  createdAt   DateTime   @default(now())
+
+  @@map("merchant_categories")
+}
+
+model MerchantStatus {
+  id             String         @id @default(cuid())
+  code           String         @unique // BELUM_DIKUNJUNGI, SURVEY, NEGOSIASI, AKUISISI, DITOLAK
+  name           String         // Display name
+  colorHex       String         // Hex Code for Map Markers
+  sortOrder      Int            @default(0)
+  merchants      Merchant[]
+  prevVisitLogs  VisitHistory[] @relation("PreviousStatus")
+  newVisitLogs   VisitHistory[] @relation("NewStatus")
+
+  @@map("merchant_statuses")
+}
+
+model Merchant {
+  id          String           @id @default(cuid())
+  name        String
+  jenis       String           // e.g. "Bar", "Cafe", "Minimarket"
+  latitude    Float
+  longitude   Float
+  address     String?
+  categoryId  String
+  category    MerchantCategory @relation(fields: [categoryId], references: [id])
+  statusId    String
+  status      MerchantStatus   @relation(fields: [statusId], references: [id])
+  importLogId String?
+  importLog   ImportLog?       @relation(fields: [importLogId], references: [id])
+  visitLogs   VisitHistory[]
+  notes       Note[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([latitude, longitude])
+  @@index([statusId])
+  @@index([categoryId])
+  @@map("merchants")
+}
+
+model VisitHistory {
+  id               String         @id @default(cuid())
+  merchantId       String
+  merchant         Merchant       @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  userId           String
+  user             User           @relation(fields: [userId], references: [id])
+  previousStatusId String
+  previousStatus   MerchantStatus @relation("PreviousStatus", fields: [previousStatusId], references: [id])
+  newStatusId      String
+  newStatus        MerchantStatus @relation("NewStatus", fields: [newStatusId], references: [id])
+  noteText         String?
+  visitedAt        DateTime       @default(now())
+
+  @@index([merchantId])
+  @@index([userId])
+  @@map("visit_histories")
+}
+
+model Note {
+  id         String   @id @default(cuid())
+  merchantId String
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  content    String
+  createdAt  DateTime @default(now())
+
+  @@map("notes")
+}
+
+model ImportLog {
+  id           String     @id @default(cuid())
+  userId       String
+  user         User       @relation(fields: [userId], references: [id])
+  fileName     String
+  totalRows    Int
+  successCount Int
+  failedCount  Int
+  status       String     // SUCCESS, FAILED, PARTIAL
+  merchants    Merchant[]
+  importedAt   DateTime   @default(now())
+
+  @@map("import_logs")
+}
