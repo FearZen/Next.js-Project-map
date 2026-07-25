@@ -4,24 +4,16 @@ import * as bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Starting Supabase database master seeding...');
+  console.log('🌱 Checking & upserting master seed data safely...');
 
-  // 1. Delete dependent records first before deleting users & roles
-  await prisma.visitHistory.deleteMany({});
-  await prisma.note.deleteMany({});
-  await prisma.importLog.deleteMany({});
-  await prisma.user.deleteMany({});
-
-  // 2. Seed Master Role ADMIN only
+  // 1. Seed Master Role ADMIN (Non-destructive)
   const adminRole = await prisma.role.upsert({
     where: { name: 'ADMIN' },
     update: { description: 'System Administrator dengan akses penuh' },
     create: { name: 'ADMIN', description: 'System Administrator dengan akses penuh' },
   });
 
-  console.log('✅ Master Role ADMIN updated');
-
-  // 3. Seed Master Merchant Statuses
+  // 2. Seed Master Merchant Statuses (Non-destructive)
   const statusesData = [
     { code: 'BELUM_DIKUNJUNGI', name: 'Belum Dikunjungi', colorHex: '#EF4444', sortOrder: 1 },
     { code: 'SURVEY', name: 'Survey', colorHex: '#F59E0B', sortOrder: 2 },
@@ -37,9 +29,8 @@ async function main() {
       create: st,
     });
   }
-  console.log('✅ Master Statuses seeded');
 
-  // 4. Seed ONLY System Admin User
+  // 3. Seed ONLY System Admin User (Non-destructive)
   const adminPasswordHash = await bcrypt.hash('admin123', 10);
 
   await prisma.user.upsert({
@@ -52,7 +43,8 @@ async function main() {
       roleId: adminRole.id,
     },
   });
-  console.log('✅ Only System Admin User seeded');
+
+  console.log('✅ Master seed completed safely without touching merchant data!');
 }
 
 main()
