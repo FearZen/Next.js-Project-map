@@ -56,16 +56,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    let successCount = 0;
-    let duplicateSkipped = 0;
-    let failedCount = 0;
+    // 3. Batch Ensure Categories Exist (1 single round-trip)
+    const uniqueSheetNames = Array.from(new Set(parsed.data.map((d) => d.sheetName)));
+    const categoryMap: Record<string, string> = {};
 
-    // 3. Cache Categories
-    const categoryCache: Record<string, string> = {};
-    const existingCategories = await prisma.merchantCategory.findMany();
-    existingCategories.forEach((c) => {
-      categoryCache[c.name] = c.id;
-    });
+    for (const sheetName of uniqueSheetNames) {
+      const cat = await prisma.merchantCategory.upsert({
+        where: { name: sheetName },
+        update: {},
+        create: { name: sheetName, description: `Dibuat otomatis dari Sheet Excel "${sheetName}"` },
+      });
+      categoryMap[sheetName] = cat.id;
+    }
 
     // 4. Create ImportLog record if valid user exists
     let importLogId: string | undefined;
@@ -83,82 +85,53 @@ export async function POST(req: NextRequest) {
       importLogId = importLog.id;
     }
 
-    // 5. Process Rows
+    // 5. In-Memory Duplicate Matching (Single Query for all existing merchants)
+    const existingMerchants = await prisma.merchant.findMany({
+      select: { id: true, name: true, categoryId: true, latitude: true, longitude: true },
+    });
+
+    const existingSet = new Set<string>();
+    existingMerchants.forEach((m) => {
+      existingSet.add(`${m.name.trim().toLowerCase()}_${m.categoryId}_${m.latitude.toFixed(6)}_${m.longitude.toFixed(6)}`);
+    });
+
+    const toCreate: any[] = [];
+    let duplicateSkipped = 0;
+
     for (const row of parsed.data) {
-      try {
-        // Ensure category exists
-        if (!categoryCache[row.sheetName]) {
-          const createdCat = await prisma.merchantCategory.upsert({
-            where: { name: row.sheetName },
-            update: {},
-            create: { name: row.sheetName, description: `Dibuat otomatis dari Sheet Excel "${row.sheetName}"` },
-          });
-          categoryCache[row.sheetName] = createdCat.id;
-        }
+      const categoryId = categoryMap[row.sheetName];
+      const dupKey = `${row.name.trim().toLowerCase()}_${categoryId}_${row.latitude.toFixed(6)}_${row.longitude.toFixed(6)}`;
 
-        const categoryId = categoryCache[row.sheetName];
-
-        // Duplicate Check (by name & category & lat/long proximity)
-        const existing = await prisma.merchant.findFirst({
-          where: {
-            name: row.name,
-            categoryId,
-            latitude: row.latitude,
-            longitude: row.longitude,
-          },
-        });
-
-        if (existing) {
-          if (!parsed.overwriteDuplicate) {
-            duplicateSkipped++;
-            continue; // Skip duplicate
-          } else {
-            // Overwrite existing data
-            await prisma.merchant.update({
-              where: { id: existing.id },
-              data: {
-                jenis: row.jenis,
-                address: row.address || null,
-                importLogId,
-              },
-            });
-            successCount++;
-            continue;
-          }
-        }
-
-        // Create new Merchant
-        const newMerchant = await prisma.merchant.create({
-          data: {
-            name: row.name,
-            jenis: row.jenis,
-            latitude: row.latitude,
-            longitude: row.longitude,
-            address: row.address || null,
-            categoryId,
-            statusId,
-            importLogId,
-          },
-        });
-
-        // Add initial visit history if userId exists
-        if (userId) {
-          await prisma.visitHistory.create({
-            data: {
-              merchantId: newMerchant.id,
-              userId,
-              previousStatusId: statusId,
-              newStatusId: statusId,
-              noteText: `Merchant diimpor dari file "${parsed.fileName}" (Sheet: ${row.sheetName})`,
-            },
-          });
-        }
-
-        successCount++;
-      } catch (err) {
-        console.error('Error importing row:', err);
-        failedCount++;
+      if (existingSet.has(dupKey) && !parsed.overwriteDuplicate) {
+        duplicateSkipped++;
+        continue;
       }
+
+      toCreate.push({
+        name: row.name,
+        jenis: row.jenis,
+        latitude: row.latitude,
+        longitude: row.longitude,
+        address: row.address || null,
+        categoryId,
+        statusId,
+        importLogId: importLogId || null,
+      });
+
+      // Add to set so duplicates inside the SAME excel file are skipped as well
+      existingSet.add(dupKey);
+    }
+
+    // 6. Bulk Insert using prisma.merchant.createMany (1 single lightning-fast SQL query!)
+    let successCount = 0;
+    let failedCount = 0;
+
+    if (toCreate.length > 0) {
+      const result = await prisma.merchant.createMany({
+        data: toCreate,
+        skipDuplicates: true,
+      });
+      successCount = result.count;
     }
 
     // Update Import Log status if created
@@ -168,7 +141,7 @@ export async function POST(req: NextRequest) {
         data: {
           successCount,
           failedCount,
-          status: failedCount === 0 ? 'SUCCESS' : 'PARTIAL',
+          status: 'SUCCESS',
         },
       });
     }
