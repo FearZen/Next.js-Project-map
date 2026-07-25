@@ -183,11 +183,30 @@ export default function ImportPage() {
 
       {/* Summary Alert after Successful Import */}
       {importSummary && (
-        <div className="p-6 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-white space-y-4 shadow-xl">
-          <div className="flex items-center gap-3 text-emerald-400">
-            <CheckCircle2 className="w-6 h-6" />
-            <h3 className="text-lg font-bold">Impor Data Merchant Berhasil Disimpan ke Supabase!</h3>
+        <div className={`p-6 rounded-2xl text-white space-y-4 shadow-xl border ${
+          importSummary.successCount > 0
+            ? 'bg-emerald-500/10 border-emerald-500/30'
+            : 'bg-amber-500/10 border-amber-500/30'
+        }`}>
+          <div className="flex items-center gap-3">
+            {importSummary.successCount > 0 ? (
+              <CheckCircle2 className="w-6 h-6 text-emerald-400" />
+            ) : (
+              <AlertTriangle className="w-6 h-6 text-amber-400" />
+            )}
+            <h3 className="text-lg font-bold">
+              {importSummary.successCount > 0
+                ? 'Impor Data Merchant Berhasil Disimpan ke Supabase!'
+                : 'Impor Selesai - Seluruh Data Dilewati (Duplikat)'}
+            </h3>
           </div>
+
+          {importSummary.successCount === 0 && importSummary.duplicateSkipped > 0 && (
+            <p className="text-xs text-amber-300 bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl">
+              💡 <b>Perhatian:</b> Seluruh <b>{importSummary.duplicateSkipped} data</b> dilewati karena dianggap duplikat (sudah ada di database). Jika Anda ingin memasukkan ulang dari awal, silakan klik tombol merah <b>"Kosongkan Database Merchant"</b> terlebih dahulu di pojok kanan atas, atau centang opsi <i>"Proses seluruh baris (Timpa jika ada merchant duplikat)"</i>.
+            </p>
+          )}
+
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
             <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800">
               <span className="text-slate-400 block">Total Baris Diproses</span>
@@ -210,7 +229,7 @@ export default function ImportPage() {
             onClick={() => router.push('/map')}
             className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-6 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
           >
-            <span>Lihat Seluruh {importSummary.successCount} Merchant di Peta Spasial</span>
+            <span>Buka Peta Spasial Merchant</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>
