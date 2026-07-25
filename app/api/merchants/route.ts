@@ -13,17 +13,31 @@ export async function GET(req: NextRequest) {
   try {
     const where: any = {};
 
-    if (statusId && statusId !== 'ALL') {
+    if (
+      statusId &&
+      statusId.trim() !== '' &&
+      statusId.toUpperCase() !== 'ALL' &&
+      statusId !== 'undefined' &&
+      statusId !== 'null'
+    ) {
       where.statusId = statusId;
     }
-    if (categoryId && categoryId !== 'ALL') {
+
+    if (
+      categoryId &&
+      categoryId.trim() !== '' &&
+      categoryId.toUpperCase() !== 'ALL' &&
+      categoryId !== 'undefined' &&
+      categoryId !== 'null'
+    ) {
       where.categoryId = categoryId;
     }
+
     if (search && search.trim() !== '') {
       where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { jenis: { contains: search, mode: 'insensitive' } },
-        { address: { contains: search, mode: 'insensitive' } },
+        { name: { contains: search.trim(), mode: 'insensitive' } },
+        { jenis: { contains: search.trim(), mode: 'insensitive' } },
+        { address: { contains: search.trim(), mode: 'insensitive' } },
       ];
     }
 
@@ -40,13 +54,13 @@ export async function GET(req: NextRequest) {
         type: 'Feature',
         geometry: {
           type: 'Point',
-          coordinates: [m.longitude, m.latitude],
+          coordinates: [m.longitude || 0, m.latitude || 0],
         },
         properties: {
           id: m.id,
-          name: m.name,
-          jenis: m.jenis,
-          address: m.address,
+          name: m.name || 'Merchant Tanpa Nama',
+          jenis: m.jenis || 'Umum',
+          address: m.address || '',
           category: m.category?.name || 'Umum',
           categoryId: m.categoryId,
           statusId: m.statusId,
@@ -65,7 +79,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Default JSON Paginated Table Response (Safe Include)
+    // Default JSON Paginated Table Response
     const skip = (page - 1) * limit;
     const [merchants, total] = await Promise.all([
       prisma.merchant.findMany({

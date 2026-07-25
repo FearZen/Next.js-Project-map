@@ -38,14 +38,20 @@ export default function MerchantsListPage() {
     async (pageNum: number = 1) => {
       setIsLoading(true);
       try {
-        const params = new URLSearchParams({
-          format: 'json',
-          page: pageNum.toString(),
-          limit: '15',
-          statusId: selectedStatusId,
-          categoryId: selectedCategoryId,
-          search: searchQuery,
-        });
+        const params = new URLSearchParams();
+        params.set('format', 'json');
+        params.set('page', pageNum.toString());
+        params.set('limit', '15');
+
+        if (selectedStatusId && selectedStatusId !== 'ALL') {
+          params.set('statusId', selectedStatusId);
+        }
+        if (selectedCategoryId && selectedCategoryId !== 'ALL') {
+          params.set('categoryId', selectedCategoryId);
+        }
+        if (searchQuery && searchQuery.trim() !== '') {
+          params.set('search', searchQuery.trim());
+        }
 
         const res = await fetch(`/api/merchants?${params.toString()}`);
         const json = await res.json();

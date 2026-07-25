@@ -52,12 +52,18 @@ export default function MapPage() {
   const fetchMapFeatures = useCallback(async () => {
     setIsLoading(true);
     try {
-      const params = new URLSearchParams({
-        format: 'geojson',
-        statusId: selectedStatusId,
-        categoryId: selectedCategoryId,
-        search: searchQuery,
-      });
+      const params = new URLSearchParams();
+      params.set('format', 'geojson');
+
+      if (selectedStatusId && selectedStatusId !== 'ALL') {
+        params.set('statusId', selectedStatusId);
+      }
+      if (selectedCategoryId && selectedCategoryId !== 'ALL') {
+        params.set('categoryId', selectedCategoryId);
+      }
+      if (searchQuery && searchQuery.trim() !== '') {
+        params.set('search', searchQuery.trim());
+      }
 
       const res = await fetch(`/api/merchants?${params.toString()}`);
       const json = await res.json();
