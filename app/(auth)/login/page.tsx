@@ -109,7 +109,7 @@ export default function LoginPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="wira@mandirimap.com"
+                  placeholder="admin@mandirimap.com"
                   className="w-full bg-slate-950/80 border border-slate-700/80 rounded-xl pl-11 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
                 />
               </div>
@@ -153,48 +153,22 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Quick Demo Preset Selector */}
+          {/* Quick Preset Admin Button */}
           <div className="mt-8 pt-6 border-t border-slate-800/80">
             <p className="text-xs text-slate-400 font-medium mb-3 text-center">
-              Akses Cepat Demo Role (1-Click Fill):
+              Akses Cepat System Admin (1-Click Fill):
             </p>
-            <div className="grid grid-cols-1 gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('wira@mandirimap.com', 'marketing123')}
-                className="bg-slate-800/80 hover:bg-slate-700 text-slate-200 py-2.5 px-3 rounded-lg border border-slate-700/60 text-left transition-colors flex items-center justify-between"
-              >
-                <div>
-                  <span className="font-semibold text-blue-400 block">Wira (Marketing)</span>
-                  <span className="text-[10px] text-slate-400">wira@mandirimap.com</span>
-                </div>
-                <span className="text-[10px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded border border-blue-500/20">Fill</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('ibnu@mandirimap.com', 'cabang123')}
-                className="bg-slate-800/80 hover:bg-slate-700 text-slate-200 py-2.5 px-3 rounded-lg border border-slate-700/60 text-left transition-colors flex items-center justify-between"
-              >
-                <div>
-                  <span className="font-semibold text-emerald-400 block">Ibnu Perdana (Kepala Cabang)</span>
-                  <span className="text-[10px] text-slate-400">ibnu@mandirimap.com</span>
-                </div>
-                <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20">Fill</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('admin@mandirimap.com', 'admin123')}
-                className="bg-slate-800/80 hover:bg-slate-700 text-slate-200 py-2.5 px-3 rounded-lg border border-slate-700/60 text-left transition-colors flex items-center justify-between"
-              >
-                <div>
-                  <span className="font-semibold text-purple-400 block">System Admin</span>
-                  <span className="text-[10px] text-slate-400">admin@mandirimap.com</span>
-                </div>
-                <span className="text-[10px] bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded border border-purple-500/20">Fill</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => handleQuickLogin('admin@mandirimap.com', 'admin123')}
+              className="w-full bg-slate-800/80 hover:bg-slate-700 text-slate-200 py-2.5 px-3 rounded-lg border border-slate-700/60 text-left transition-colors flex items-center justify-between cursor-pointer"
+            >
+              <div>
+                <span className="font-semibold text-purple-400 block">System Admin</span>
+                <span className="text-[10px] text-slate-400">admin@mandirimap.com</span>
+              </div>
+              <span className="text-[10px] bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded border border-purple-500/20">Fill Admin</span>
+            </button>
           </div>
         </div>
       </div>

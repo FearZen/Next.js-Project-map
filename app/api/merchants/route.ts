@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Default JSON Paginated Table Response
+    // Default JSON Paginated Table Response (Safe Include)
     const skip = (page - 1) * limit;
     const [merchants, total] = await Promise.all([
       prisma.merchant.findMany({
@@ -73,11 +73,6 @@ export async function GET(req: NextRequest) {
         include: {
           category: true,
           status: true,
-          visitLogs: {
-            take: 1,
-            orderBy: { visitedAt: 'desc' },
-            include: { user: { select: { name: true } } },
-          },
         },
         orderBy: { updatedAt: 'desc' },
         skip,

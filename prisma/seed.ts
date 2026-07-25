@@ -11,27 +11,17 @@ async function main() {
   await prisma.note.deleteMany({});
   await prisma.importLog.deleteMany({});
   await prisma.user.deleteMany({});
-  await prisma.role.deleteMany({ where: { name: 'TEAM_LEADER' } });
 
-  // 2. Seed Master Roles (Team Leader removed)
-  const rolesData = [
-    { name: 'ADMIN', description: 'System Administrator dengan akses penuh' },
-    { name: 'MARKETING', description: 'Sales Officer (Wira) di lapangan' },
-    { name: 'KEPALA_CABANG', description: 'Kepala Cabang (Ibnu Perdana) memantau analytics' },
-  ];
+  // 2. Seed Master Role ADMIN only
+  const adminRole = await prisma.role.upsert({
+    where: { name: 'ADMIN' },
+    update: { description: 'System Administrator dengan akses penuh' },
+    create: { name: 'ADMIN', description: 'System Administrator dengan akses penuh' },
+  });
 
-  const rolesMap: Record<string, string> = {};
-  for (const role of rolesData) {
-    const createdRole = await prisma.role.upsert({
-      where: { name: role.name },
-      update: { description: role.description },
-      create: role,
-    });
-    rolesMap[role.name] = createdRole.id;
-  }
-  console.log('✅ Master Roles updated (Team Leader removed)');
+  console.log('✅ Master Role ADMIN updated');
 
-  // 3. Seed Master Merchant Statuses with Color Hex
+  // 3. Seed Master Merchant Statuses
   const statusesData = [
     { code: 'BELUM_DIKUNJUNGI', name: 'Belum Dikunjungi', colorHex: '#EF4444', sortOrder: 1 },
     { code: 'SURVEY', name: 'Survey', colorHex: '#F59E0B', sortOrder: 2 },
@@ -49,39 +39,20 @@ async function main() {
   }
   console.log('✅ Master Statuses seeded');
 
-  // 4. Seed Updated Users: Wira (Marketing), Ibnu Perdana (Kepala Cabang), System Admin
-  const defaultPasswordHash = await bcrypt.hash('password123', 10);
+  // 4. Seed ONLY System Admin User
   const adminPasswordHash = await bcrypt.hash('admin123', 10);
 
-  const usersData = [
-    {
+  await prisma.user.upsert({
+    where: { email: 'admin@mandirimap.com' },
+    update: { name: 'System Admin', passwordHash: adminPasswordHash, roleId: adminRole.id },
+    create: {
       name: 'System Admin',
       email: 'admin@mandirimap.com',
       passwordHash: adminPasswordHash,
-      roleId: rolesMap['ADMIN'],
+      roleId: adminRole.id,
     },
-    {
-      name: 'Wira (Marketing)',
-      email: 'wira@mandirimap.com',
-      passwordHash: defaultPasswordHash,
-      roleId: rolesMap['MARKETING'],
-    },
-    {
-      name: 'Ibnu Perdana (Kepala Cabang)',
-      email: 'ibnu@mandirimap.com',
-      passwordHash: defaultPasswordHash,
-      roleId: rolesMap['KEPALA_CABANG'],
-    },
-  ];
-
-  for (const u of usersData) {
-    await prisma.user.upsert({
-      where: { email: u.email },
-      update: { name: u.name, passwordHash: u.passwordHash, roleId: u.roleId },
-      create: u,
-    });
-  }
-  console.log('✅ Updated Users seeded: Wira (Marketing), Ibnu Perdana (Kepala Cabang), System Admin');
+  });
+  console.log('✅ Only System Admin User seeded');
 }
 
 main()

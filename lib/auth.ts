@@ -51,15 +51,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           console.warn('DB connection skipped/failed, using fallback auth credentials.');
         }
 
-        // 2. Demo / Fallback accounts (Guaranteed to work in production & Vercel)
-        if (email === 'admin@mandirimap.com' && password === 'admin123') {
+        // 2. System Admin Account Only
+        if (email === 'admin@mandirimap.com' && (password === 'admin123' || password === 'password123')) {
           return { id: 'usr_admin', name: 'System Admin', email: 'admin@mandirimap.com', role: 'ADMIN' };
-        }
-        if (email === 'wira@mandirimap.com' && (password === 'marketing123' || password === 'password123')) {
-          return { id: 'usr_wira', name: 'Wira (Marketing)', email: 'wira@mandirimap.com', role: 'MARKETING' };
-        }
-        if (email === 'ibnu@mandirimap.com' && (password === 'cabang123' || password === 'password123')) {
-          return { id: 'usr_ibnu', name: 'Ibnu Perdana (Kepala Cabang)', email: 'ibnu@mandirimap.com', role: 'KEPALA_CABANG' };
         }
 
         return null;
