@@ -5,6 +5,7 @@ import { MapView } from '@/components/map/MapView';
 import { UpdateStatusModal } from '@/components/map/UpdateStatusModal';
 import { Search, Compass, Store, RefreshCcw, Palette, SlidersHorizontal, X } from 'lucide-react';
 import { getCategoryColorHex } from '@/lib/categoryColors';
+import { CustomModal } from '@/components/ui/CustomModal';
 
 export default function MapPage() {
   const [features, setFeatures] = useState<any[]>([]);
@@ -79,23 +80,33 @@ export default function MapPage() {
     fetchMapFeatures();
   }, [fetchMapFeatures]);
 
-  // Handle Delete Merchant Pin
-  const handleDeleteMerchant = async (merchant: any) => {
-    if (!confirm(`Apakah Anda yakin ingin menghapus pin merchant "${merchant.name}"?`)) {
-      return;
-    }
+  // Custom Delete Modal State
+  const [merchantToDelete, setMerchantToDelete] = useState<any | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Handle Delete Merchant Pin Confirmation Trigger
+  const handleDeleteMerchantTrigger = (merchant: any) => {
+    setMerchantToDelete(merchant);
+  };
+
+  // Execute Delete Merchant
+  const executeDeleteMerchant = async () => {
+    if (!merchantToDelete) return;
+    setIsDeleting(true);
 
     try {
-      const res = await fetch(`/api/merchants/${merchant.id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/merchants/${merchantToDelete.id}`, { method: 'DELETE' });
       const json = await res.json();
       if (json.success) {
-        alert(`Merchant "${merchant.name}" berhasil dihapus.`);
+        setMerchantToDelete(null);
         fetchMapFeatures();
       } else {
         alert(`Gagal menghapus merchant: ${json.error}`);
       }
     } catch (err) {
       alert('Terjadi kesalahan jaringan saat menghapus merchant.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -241,7 +252,7 @@ export default function MapPage() {
             setMerchantToUpdate(merchant);
             setIsModalOpen(true);
           }}
-          onDeleteMerchantClick={handleDeleteMerchant}
+          onDeleteMerchantClick={handleDeleteMerchantTrigger}
         />
       </div>
 
@@ -298,6 +309,19 @@ export default function MapPage() {
         onSuccess={() => {
           fetchMapFeatures();
         }}
+      />
+
+      {/* Delete Pin Confirmation Custom Modal */}
+      <CustomModal
+        isOpen={Boolean(merchantToDelete)}
+        onClose={() => setMerchantToDelete(null)}
+        onConfirm={executeDeleteMerchant}
+        title="Hapus Pin Merchant?"
+        message={`Apakah Anda yakin ingin menghapus merchant "${merchantToDelete?.name}" dari peta & database Supabase?`}
+        type="danger"
+        confirmText="Hapus Merchant"
+        cancelText="Batal"
+        isLoading={isDeleting}
       />
     </div>
   );

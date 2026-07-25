@@ -2,8 +2,9 @@
 
 import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { FileSpreadsheet, UploadCloud, CheckCircle2, AlertTriangle, Layers, ArrowRight, Loader2, Trash2, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
+import { FileSpreadsheet, UploadCloud, CheckCircle2, AlertTriangle, Layers, ArrowRight, Loader2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { parseExcelFile, ParsedMerchantRow } from '@/lib/excel';
+import { CustomModal } from '@/components/ui/CustomModal';
 
 export default function ImportPage() {
   const router = useRouter();
@@ -16,6 +17,20 @@ export default function ImportPage() {
   const [overwriteDuplicate, setOverwriteDuplicate] = useState(true);
   const [importSummary, setImportSummary] = useState<any | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Custom Modal States
+  const [isConfirmClearOpen, setIsConfirmClearOpen] = useState(false);
+  const [feedbackModal, setFeedbackModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: 'danger' | 'success' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'info',
+  });
 
   // Preview Filter & Pagination States
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'VALID' | 'INVALID'>('ALL');
@@ -49,14 +64,12 @@ export default function ImportPage() {
   const validRows = useMemo(() => parsedRows.filter((r) => r.isValid), [parsedRows]);
   const invalidRows = useMemo(() => parsedRows.filter((r) => !r.isValid), [parsedRows]);
 
-  // Filtered rows based on selected tab
   const filteredRows = useMemo(() => {
     if (statusFilter === 'VALID') return validRows;
     if (statusFilter === 'INVALID') return invalidRows;
     return parsedRows;
   }, [parsedRows, validRows, invalidRows, statusFilter]);
 
-  // Paginated subset
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
   const currentTableRows = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
@@ -93,26 +106,40 @@ export default function ImportPage() {
     }
   };
 
-  const handleClearDatabase = async () => {
-    if (!confirm('Apakah Anda yakin ingin mengosongkan seluruh data merchant di database Supabase?')) {
-      return;
-    }
-
+  const executeClearDatabase = async () => {
     setIsClearing(true);
+    setIsConfirmClearOpen(false);
+
     try {
       const res = await fetch('/api/merchants/clear', { method: 'POST' });
       const json = await res.json();
       if (json.success) {
-        alert('Database merchant telah dikosongkan.');
         setImportSummary(null);
         setParsedRows([]);
         setFileName(null);
         setCurrentPage(1);
+
+        setFeedbackModal({
+          isOpen: true,
+          title: 'Database Merchant Berhasil Dikosongkan',
+          message: 'Seluruh data merchant di Supabase telah dibersihkan. Anda dapat mengunggah kembali file Excel Anda.',
+          type: 'success',
+        });
       } else {
-        alert('Gagal mengosongkan database: ' + json.error);
+        setFeedbackModal({
+          isOpen: true,
+          title: 'Gagal Mengosongkan Database',
+          message: json.error || 'Terjadi kendala saat menghapus data merchant.',
+          type: 'danger',
+        });
       }
     } catch (err) {
-      alert('Terjadi kesalahan jaringan.');
+      setFeedbackModal({
+        isOpen: true,
+        title: 'Kesalahan Jaringan',
+        message: 'Gagal menghubungkan ke server.',
+        type: 'danger',
+      });
     } finally {
       setIsClearing(false);
     }
@@ -134,7 +161,7 @@ export default function ImportPage() {
 
         <button
           type="button"
-          onClick={handleClearDatabase}
+          onClick={() => setIsConfirmClearOpen(true)}
           disabled={isClearing}
           className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 font-semibold px-4 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 transition-colors self-start md:self-auto cursor-pointer"
         >
@@ -238,7 +265,6 @@ export default function ImportPage() {
       {/* Preview & Pagination Section */}
       {parsedRows.length > 0 && !importSummary && (
         <div className="space-y-6">
-          {/* Sheet Detection Chips */}
           <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-2">
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-300">
               <Layers className="w-4 h-4 text-blue-400" />
@@ -262,7 +288,6 @@ export default function ImportPage() {
             </div>
           </div>
 
-          {/* Action Bar */}
           <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <input
@@ -296,13 +321,10 @@ export default function ImportPage() {
             </button>
           </div>
 
-          {/* Preview Data Table with Filter Tabs & Pagination */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-            {/* Header Tabs */}
             <div className="px-6 py-4 border-b border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-slate-950/50">
               <h3 className="font-bold text-sm text-white">Pratinjau Data Impor ({filteredRows.length} Baris Ditampilkan)</h3>
               
-              {/* Filter Tabs */}
               <div className="flex items-center gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800">
                 <button
                   type="button"
@@ -342,7 +364,6 @@ export default function ImportPage() {
               </div>
             </div>
 
-            {/* Table View */}
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs text-slate-300">
                 <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider text-[10px] font-semibold border-b border-slate-800">
@@ -385,7 +406,6 @@ export default function ImportPage() {
               </table>
             </div>
 
-            {/* Pagination Bar */}
             <div className="px-6 py-4 border-t border-slate-800 flex items-center justify-between bg-slate-950/50 text-xs text-slate-400">
               <div>
                 Menampilkan {Math.min((currentPage - 1) * pageSize + 1, filteredRows.length)} - {Math.min(currentPage * pageSize, filteredRows.length)} dari {filteredRows.length} baris
@@ -416,6 +436,30 @@ export default function ImportPage() {
           </div>
         </div>
       )}
+
+      {/* Confirmation Modal for Clear Database */}
+      <CustomModal
+        isOpen={isConfirmClearOpen}
+        onClose={() => setIsConfirmClearOpen(false)}
+        onConfirm={executeClearDatabase}
+        title="Kosongkan Seluruh Database Merchant?"
+        message="Tindakan ini akan menghapus seluruh data merchant dan catatan di Supabase. Apakah Anda yakin ingin memproses?"
+        type="danger"
+        confirmText="Ya, Kosongkan Database"
+        cancelText="Batal"
+        isLoading={isClearing}
+      />
+
+      {/* Feedback Custom Modal */}
+      <CustomModal
+        isOpen={feedbackModal.isOpen}
+        onClose={() => setFeedbackModal((prev) => ({ ...prev, isOpen: false }))}
+        title={feedbackModal.title}
+        message={feedbackModal.message}
+        type={feedbackModal.type}
+        confirmText="Tutup"
+        onConfirm={() => setFeedbackModal((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }
