@@ -95,8 +95,14 @@ export async function GET(req: NextRequest) {
       prisma.merchant.count({ where }),
     ]);
 
+    const sanitizedMerchants = merchants.map((m) => ({
+      ...m,
+      category: m.category || { name: 'Umum' },
+      status: m.status || { code: 'BELUM_DIKUNJUNGI', name: 'Belum Dikunjungi', colorHex: '#EF4444' },
+    }));
+
     return NextResponse.json({
-      merchants,
+      merchants: sanitizedMerchants,
       pagination: {
         total,
         page,

@@ -224,7 +224,7 @@ export default function MerchantsListPage() {
 
                       <td className="px-6 py-4 min-w-[240px]">
                         <div className="text-[11px] font-mono text-slate-400">
-                          {m.latitude.toFixed(6)}, {m.longitude.toFixed(6)}
+                          {typeof m.latitude === 'number' ? m.latitude.toFixed(6) : (m.latitude || '0.0')}, {typeof m.longitude === 'number' ? m.longitude.toFixed(6) : (m.longitude || '0.0')}
                         </div>
                         <div className="text-xs text-slate-300 max-w-xs truncate mt-0.5">
                           {m.address || 'Alamat belum diisi'}
