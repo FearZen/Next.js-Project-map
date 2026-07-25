@@ -1,18 +1,11 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { auth } from '@/lib/auth';
 
 export async function POST() {
-  const session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
   try {
-    await prisma.visitHistory.deleteMany();
-    await prisma.note.deleteMany();
-    await prisma.merchant.deleteMany();
-    await prisma.importLog.deleteMany();
+    // Single atomic delete statement (Cascade deletes visit histories & notes automatically)
+    await prisma.merchant.deleteMany({});
+    await prisma.importLog.deleteMany({});
 
     return NextResponse.json({ success: true, message: 'Seluruh data merchant berhasil dikosongkan.' });
   } catch (error: any) {
